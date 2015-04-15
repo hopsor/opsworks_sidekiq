@@ -34,10 +34,22 @@ node[:deploy].each do |application, deploy|
     app application
   end
 
+  Chef::Log.debug("Exposing app env vars into a file")
+  template File.join(deploy[:deploy_to], "shared", "app.env") do
+    source "app.env.erb"
+    mode 0770
+    owner deploy[:user]
+    group deploy[:group]
+    variables(
+      :environment => OpsWorks::Escape.escape_double_quotes(deploy[:environment_variables])
+    )
+    only_if {File.exists?("#{deploy[:deploy_to]}/shared")}
+  end
+
   Chef::Log.debug("Restarting Sidekiq Application: #{application}")
   execute "restart Rails app #{application}" do
-    command "sleep 300 && #{node[:sidekiq][application][:restart_command]}"
-    # command node[:sidekiq][application][:restart_command]
+    # command "sleep 300 && #{node[:sidekiq][application][:restart_command]}"
+    command node[:sidekiq][application][:restart_command]
   end
 
 end
